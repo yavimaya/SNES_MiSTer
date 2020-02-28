@@ -116,14 +116,21 @@ module emu
 	// 1 - D-/TX
 	// 2..6 - USR2..USR6
 	// Set USER_OUT to 1 to read from USER_IN.
-	input   [6:0] USER_IN,
-	output  [6:0] USER_OUT,
+    output  	  USER_OSD,	
+    output	  	  USER_MODE,	
+	input   [7:0] USER_IN,
+	output  [7:0] USER_OUT,
 
 	input         OSD_STATUS
 );
 
 assign ADC_BUS  = 'Z;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
+
+wire   joy_split, joy_mdsel;
+wire   [5:0] joy_in = |status[63:62] ? {USER_IN[6],USER_IN[3],USER_IN[5],USER_IN[7],USER_IN[1],USER_IN[2]} : '1;
+assign USER_MODE = |status[63:62] ;
+assign USER_OSD  = joydb9md_1[7] & joydb9md_1[5];
 
 assign AUDIO_S   = 1;
 assign AUDIO_MIX = status[20:19];
@@ -243,7 +250,9 @@ parameter CONF_STR = {
     "O56,Mouse,None,Port1,Port2;",
     "O7,Swap Joysticks,No,Yes;",
     "OH,Multitap,Disabled,Port2;",
-    "O8,Serial,OFF,SNAC;",
+    "D6oUV,Serial SNAC DB9,Off,1 Player,2 Players;",
+    "D7O8,Serial,OFF,SNAC;",
+	"H5o0,SNAC Mode, 1 Player, 2 Players;",		
     "-;",
     "OPQ,Super Scope,Disabled,Joy1,Joy2,Mouse;",
     "D4OR,Super Scope Btn,Joy,Mouse;",
@@ -260,8 +269,8 @@ parameter CONF_STR = {
 };
 
 wire  [1:0] buttons;
-wire [31:0] status;
-wire [15:0] status_menumask = {!GUN_MODE, ~turbo_allow, ~gg_available, ~GSU_ACTIVE, ~bk_ena};
+wire [63:0] status;
+wire [15:0] status_menumask = {raw_db9, raw_serial, !raw_serial, !GUN_MODE, ~turbo_allow, ~gg_available, ~GSU_ACTIVE, ~bk_ena};
 wire        forced_scandoubler;
 reg  [31:0] sd_lba;
 reg         sd_rd = 0;
@@ -280,7 +289,7 @@ wire [15:0] ioctl_dout;
 wire        ioctl_wr;
 wire  [7:0] ioctl_index;
 
-wire [11:0] joy0,joy1,joy2,joy3,joy4;
+wire [11:0] joy0_USB,joy1_USB,joy2_USB,joy3_USB,joy4_USB;
 wire [24:0] ps2_mouse;
 
 wire  [7:0] joy0_x,joy0_y,joy1_x,joy1_y;
@@ -288,6 +297,23 @@ wire  [7:0] joy0_x,joy0_y,joy1_x,joy1_y;
 wire [64:0] RTC;
 
 wire [21:0] gamma_bus;
+
+wire [11:0] joy0 = |status[63:62] ? {joydb9md_1[7],joydb9md_1[8],joydb9md_1[11],joydb9md_1[5],joydb9md_1[10],joydb9md_1[9],joydb9md_1[4],joydb9md_1[6],joydb9md_1[3:0]} : joy0_USB;
+wire [11:0] joy1 =  status[63]    ? {joydb9md_1[7],joydb9md_1[8],joydb9md_1[11],joydb9md_1[5],joydb9md_1[10],joydb9md_1[9],joydb9md_1[4],joydb9md_1[6],joydb9md_1[3:0]} : status[62] ? joy0_USB : joy1_USB;
+wire [11:0] joy2 =  status[63] ? joy0_USB : status[62] ? joy1_USB : joy2_USB;
+wire [11:0] joy3 =  status[63] ? joy1_USB : status[62] ? joy2_USB : joy3_USB;
+wire [11:0] joy4 =  status[63] ? joy2_USB : status[62] ? joy3_USB : joy4_USB;
+
+reg [15:0] joydb9md_1,joydb9md_2;
+joy_db9md joy_db9md
+(
+  .clk       ( CLK_VIDEO ), //48MHz
+  .joy_split ( joy_split  ),
+  .joy_mdsel ( joy_mdsel  ),
+  .joy_in    ( joy_in     ),
+  .joystick1 ( joydb9md_1 ),
+  .joystick2 ( joydb9md_2 )	  
+);
 
 hps_io #(.STRLEN($size(CONF_STR)>>3), .WIDE(1)) hps_io
 (
@@ -301,11 +327,12 @@ hps_io #(.STRLEN($size(CONF_STR)>>3), .WIDE(1)) hps_io
 
 	.joystick_analog_0({joy0_y, joy0_x}),
 	.joystick_analog_1({joy1_y, joy1_x}),
-	.joystick_0(joy0),
-	.joystick_1(joy1),
-	.joystick_2(joy2),
-	.joystick_3(joy3),
-	.joystick_4(joy4),
+	.joystick_0(joy0_USB),
+	.joystick_1(joy1_USB),
+	.joystick_2(joy2_USB),
+	.joystick_3(joy3_USB),
+	.joystick_4(joy4_USB),
+	.joy_raw({joydb9md_1[4],joydb9md_1[6],joydb9md_1[3:0]}), //Menu Dirs, A:Action B:Back (OSD)
 	.ps2_mouse(ps2_mouse),
 
 	.status(status),
@@ -844,12 +871,15 @@ lightgun lightgun
 // 4 = RX+   = P6
 // 5 = RX-   = P4
 
-wire raw_serial = status[8];
+wire raw_serial  = status[8];
+wire raw_serial2 = status[32];
+wire raw_db9    = |status[63:62];
 
 assign USER_OUT[2] = 1'b1;
 assign USER_OUT[3] = 1'b1;
 assign USER_OUT[5] = 1'b1;
-assign USER_OUT[6] = 1'b1;
+assign USER_OUT[7] = 1'b1;
+
 
 // JOYX_DO[0] is P4, JOYX_DO[1] is P5
 wire [1:0] JOY1_DI;
@@ -857,16 +887,34 @@ wire [1:0] JOY2_DI;
 wire JOY2_P6_DI;
 
 always_comb begin
-	if (raw_serial) begin
+	if (raw_serial & !raw_serial2) begin
 		USER_OUT[0] = JOY_STRB;
 		USER_OUT[1] = joy_swap ? ~JOY2_CLK : ~JOY1_CLK;
+		USER_OUT[6] = 1'b1;	
 		USER_OUT[4] = joy_swap ? JOY2_P6 : JOY1_P6;
 		JOY1_DI = joy_swap ? JOY1_DO : {USER_IN[2], USER_IN[5]};
 		JOY2_DI = joy_swap ? {USER_IN[2], USER_IN[5]} : JOY2_DO;
 		JOY2_P6_DI = joy_swap ? USER_IN[4] : (LG_P6_out | !GUN_MODE);
+	end else if (raw_serial & raw_serial2) begin
+		USER_OUT[0] = JOY_STRB;
+		USER_OUT[1] = joy_swap ? ~JOY2_CLK : ~JOY1_CLK;
+		USER_OUT[6] = joy_swap ? ~JOY1_CLK : ~JOY2_CLK;
+		USER_OUT[4] = joy_swap ? JOY2_P6 : JOY1_P6;
+		JOY1_DI = joy_swap ? {1'b1      , USER_IN[3]} : {USER_IN[2], USER_IN[5]};
+		JOY2_DI = joy_swap ? {USER_IN[2], USER_IN[5]} : {1'b1      , USER_IN[3]};
+		JOY2_P6_DI = joy_swap ? USER_IN[4] : (LG_P6_out | !GUN_MODE);
+	end else if (raw_db9) begin
+		USER_OUT[0] = joy_mdsel;
+		USER_OUT[1] = joy_swap ? ~JOY2_CLK : ~JOY1_CLK;
+		USER_OUT[6] = 1'b1;
+		USER_OUT[4] = joy_split;
+		JOY1_DI = JOY1_DO;
+		JOY2_DI = JOY2_DO;
+		JOY2_P6_DI = (LG_P6_out | !GUN_MODE);
 	end else begin
 		USER_OUT[0] = 1'b1;
 		USER_OUT[1] = 1'b1;
+		USER_OUT[6] = 1'b1;
 		USER_OUT[4] = 1'b1;
 		JOY1_DI = JOY1_DO;
 		JOY2_DI = JOY2_DO;
