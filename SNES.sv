@@ -251,6 +251,7 @@ parameter CONF_STR = {
     "O7,Swap Joysticks,No,Yes;",
     "OH,Multitap,Disabled,Port2;",
     "D6oUV,Serial SNAC DB9,Off,1 Player,2 Players;",
+	"D6oT,Buttons Config.,Option 1,Option 2;",
     "D7O8,Serial,OFF,SNAC;",
 	"H5o0,SNAC Mode, 1 Player, 2 Players;",		
     "-;",
@@ -298,8 +299,68 @@ wire [64:0] RTC;
 
 wire [21:0] gamma_bus;
 
-wire [11:0] joy0 = |status[63:62] ? {joydb9md_1[7],joydb9md_1[8],joydb9md_1[11],joydb9md_1[5],joydb9md_1[10],joydb9md_1[9],joydb9md_1[4],joydb9md_1[6],joydb9md_1[3:0]} : joy0_USB;
-wire [11:0] joy1 =  status[63]    ? {joydb9md_1[7],joydb9md_1[8],joydb9md_1[11],joydb9md_1[5],joydb9md_1[10],joydb9md_1[9],joydb9md_1[4],joydb9md_1[6],joydb9md_1[3:0]} : status[62] ? joy0_USB : joy1_USB;
+wire [11:0] joy0 = |status[63:62] ? 
+	!status[61] ? {
+	joydb9md_1[7], // start		-> 11 * START
+	joydb9md_1[8] | (joydb9md_1[7] & joydb9md_1[4]),// Select -> 10 * MODE or START + B
+	joydb9md_1[11],// btn_R		-> 9 * Z
+	joydb9md_1[9], // btn_L		-> 8 * X
+	joydb9md_1[6], // btn_Y		-> 7 * A
+	joydb9md_1[10],// btn_X		-> 6 * Y
+	joydb9md_1[4], // btn_B		-> 5 * B
+	joydb9md_1[5], // btn_A		-> 4 * C
+	joydb9md_1[3], // btn_up	-> 3 * U
+	joydb9md_1[2], // btn_down	-> 2 * D
+	joydb9md_1[1], // btn_left	-> 1 * L
+	joydb9md_1[0], // btn_right	-> 0 * R 
+	} :
+	{
+	joydb9md_2[7], // start		-> 11 * START
+	joydb9md_2[8] | (joydb9md_2[7] & joydb9md_2[4]),// Select -> 10 * MODE or START + B
+	joydb9md_2[11],// btn_R		-> 9 * Z
+	joydb9md_2[9], // btn_L		-> 8 * X
+	joydb9md_2[6], // btn_Y		-> 7 * A
+	joydb9md_2[10],// btn_X		-> 6 * Y
+	joydb9md_2[4], // btn_B		-> 5 * B
+	joydb9md_2[5], // btn_A		-> 4 * C
+	joydb9md_2[3], // btn_up	-> 3 * U
+	joydb9md_2[2], // btn_down	-> 2 * D
+	joydb9md_2[1], // btn_left	-> 1 * L
+	joydb9md_2[0], // btn_right	-> 0 * R 
+	}
+: joy0_USB;
+
+wire [11:0] joy1 =  status[63]    ? 
+	!status[61] ? {
+	joydb9md_1[7], // start		-> 11 * START
+	joydb9md_1[8] | (joydb9md_1[7] & joydb9md_1[4]),// Select -> 10 * MODE or START + B
+	joydb9md_1[5], // btn_R		-> 9 * C
+	joydb9md_1[11],// btn_L		-> 8 * Z
+	joydb9md_1[9], // btn_Y		-> 7 * X
+	joydb9md_1[10],// btn_X		-> 6 * Y
+	joydb9md_1[6], // btn_B		-> 5 * A
+	joydb9md_1[4], // btn_A		-> 4 * B
+	joydb9md_1[3], // btn_up	-> 3 * U
+	joydb9md_1[2], // btn_down	-> 2 * D
+	joydb9md_1[1], // btn_left	-> 1 * L
+	joydb9md_1[0], // btn_right	-> 0 * R 
+	} :
+	{
+	joydb9md_2[7], // start		-> 11 * START
+	joydb9md_2[8] | (joydb9md_2[7] & joydb9md_2[4]),// Select -> 10 * MODE or START + B
+	joydb9md_2[5], // btn_R		-> 9 * C
+	joydb9md_2[11],// btn_L		-> 8 * Z
+	joydb9md_2[9], // btn_Y		-> 7 * X
+	joydb9md_2[10],// btn_X		-> 6 * Y
+	joydb9md_2[6], // btn_B		-> 5 * A
+	joydb9md_2[4], // btn_A		-> 4 * B
+	joydb9md_2[3], // btn_up	-> 3 * U
+	joydb9md_2[2], // btn_down	-> 2 * D
+	joydb9md_2[1], // btn_left	-> 1 * L
+	joydb9md_2[0], // btn_right	-> 0 * R 
+	}
+: status[62] ? joy0_USB : joy1_USB;
+
 wire [11:0] joy2 =  status[63] ? joy0_USB : status[62] ? joy1_USB : joy2_USB;
 wire [11:0] joy3 =  status[63] ? joy1_USB : status[62] ? joy2_USB : joy3_USB;
 wire [11:0] joy4 =  status[63] ? joy2_USB : status[62] ? joy3_USB : joy4_USB;
