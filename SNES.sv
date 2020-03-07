@@ -398,7 +398,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3), .WIDE(1)) hps_io
 
 	.status(status),
 	.status_menumask(status_menumask),
-	.status_in({status[31:5],1'b0,status[3:0]}),
+	.status_in({status[63:5],1'b0,status[3:0]}),
 	.status_set(cart_download),
 
 	.ioctl_addr(ioctl_addr),
