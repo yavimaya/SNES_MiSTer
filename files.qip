@@ -1,3 +1,5 @@
+set_global_assignment -name VERILOG_FILE src/joydb9md.v
+set_global_assignment -name VERILOG_FILE src/joydb15.v
 set_global_assignment -name QIP_FILE src/65C816/65C816.qip
 set_global_assignment -name QIP_FILE src/SPC700/SPC700.qip
 set_global_assignment -name QIP_FILE src/chip/chip.qip
@@ -18,4 +20,3 @@ set_global_assignment -name SYSTEMVERILOG_FILE ioport.sv
 set_global_assignment -name SYSTEMVERILOG_FILE lightgun.sv
 set_global_assignment -name SDC_FILE SNES.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE SNES.sv
-set_global_assignment -name VERILOG_FILE src/joydb9md.v
