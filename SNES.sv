@@ -263,7 +263,7 @@ parameter CONF_STR = {
 		"D6P2oT,UserIO Players, 1 Player,2 Players;",
 		"D6P2oS,Buttons Config.,Option 1,Option 2;",
 		"P2-;",
-    "P2O8,Serial,OFF,SNAC;",
+    "D7P2O8,Serial,OFF,SNAC;",
 		"H5P2o0,SNAC Mode, 1 Player, 2 Players;", 
     "P2-;",
     "P2OPQ,Super Scope,Disabled,Joy1,Joy2,Mouse;",    
